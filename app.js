@@ -24,7 +24,7 @@ const clearHistory = $('clearHistory');
 const cameraHint = $('cameraHint');
 const installBtn = $('installBtn');
 
-const STORAGE_KEY = 'jmicha-domino-cam-v1';
+const STORAGE_KEY = 'jmicha-domino-cam-v2';
 const DEFAULT_PLAYERS = ['Equipo A', 'Equipo B', 'Jugador 1', 'Jugador 2'];
 
 let deferredInstallPrompt = null;
@@ -96,12 +96,17 @@ async function openCamera() {
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
+        width: { ideal: 960 },
+        height: { ideal: 540 },
+        frameRate: { ideal: 24, max: 30 }
       },
       audio: false
     });
     video.srcObject = stream;
+    await new Promise((resolve) => {
+      if (video.readyState >= 2) return resolve();
+      video.onloadedmetadata = () => resolve();
+    });
     await video.play();
     captureBtn.disabled = false;
     cameraHint.innerHTML = '<b>Cámara activa:</b> centra las fichas y presiona “Contar ahora”.';
@@ -114,16 +119,16 @@ async function openCamera() {
 
 function fitCanvasToVideo() {
   const rect = video.getBoundingClientRect();
-  const ratio = window.devicePixelRatio || 1;
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.max(320, Math.round(rect.width * ratio));
   canvas.height = Math.max(320, Math.round(rect.height * ratio));
-  drawVideoFrame();
+  drawOverlay();
 }
 
-function drawVideoFrame() {
-  if (!video.videoWidth) return;
+function drawOverlay() {
+  // Importante: el canvas va encima del video, así que debe quedar transparente.
+  // Si dibujamos el frame de video aquí, parece que la cámara se congeló.
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawCover(ctx, video, 0, 0, canvas.width, canvas.height);
   drawDetections(ctx, lastDetections, canvas.width, canvas.height);
 }
 
@@ -147,7 +152,10 @@ function drawCover(context, source, x, y, w, h) {
 function captureAndCount() {
   if (!video.videoWidth) return;
 
-  const maxW = 900;
+  captureBtn.disabled = true;
+  captureBtn.textContent = 'Contando...';
+
+  const maxW = 640;
   const scale = Math.min(1, maxW / video.videoWidth);
   const workW = Math.round(video.videoWidth * scale);
   const workH = Math.round(video.videoHeight * scale);
@@ -171,7 +179,9 @@ function captureAndCount() {
   confidence.textContent = result.quality;
   scoreInput.value = result.pips;
 
-  fitCanvasToVideo();
+  drawOverlay();
+  captureBtn.disabled = false;
+  captureBtn.textContent = 'Contar ahora';
   cameraHint.innerHTML = result.pips
     ? '<b>Lectura lista:</b> revisa los círculos marcados y corrige manualmente si hace falta.'
     : '<b>No detecté puntos:</b> mejora la luz, acerca la cámara o ajusta la sensibilidad.';
@@ -386,6 +396,12 @@ saveScore.addEventListener('click', addScore);
 resetGame.addEventListener('click', resetAllScores);
 clearHistory.addEventListener('click', clearOnlyHistory);
 window.addEventListener('resize', fitCanvasToVideo);
+
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && stream && video.paused) {
+    try { await video.play(); } catch (_) {}
+  }
+});
 
 window.addEventListener('beforeinstallprompt', (event) => {
   event.preventDefault();

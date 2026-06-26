@@ -49,3 +49,14 @@ La cámara móvil exige HTTPS. Para probar en producción:
 ## Limitación importante
 
 Esta versión usa visión por computadora básica en el navegador. Para una app comercial con lectura casi perfecta, lo ideal es entrenar un modelo de detección con fotos reales de tus fichas de dominó, distintas luces, ángulos y fondos.
+
+
+## Corrección v2: cámara congelada
+
+Esta versión corrige el problema donde la cámara parecía congelarse en móviles. La causa principal era que el canvas de detección estaba dibujando un frame fijo encima del video en vivo. Ahora el video queda libre y el canvas solo dibuja los círculos de detección.
+
+Si ya habías subido la versión anterior a GitHub Pages, después de reemplazar los archivos abre la app y fuerza actualización:
+
+1. En Chrome Android: menú ⋮ → Configuración del sitio → Almacenamiento → borrar datos del sitio.
+2. También puedes abrir la URL con `?v=2`, por ejemplo `https://usuario.github.io/repositorio/?v=2`.
+3. Cierra y vuelve a abrir el navegador.
